@@ -145,16 +145,8 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{"query": "{ __typename }"}'
 
-    - name: Create Python test script
-      run: |
-        cat > /tmp/python_test.py << 'PYEOF'
-        import requests
-        resp = requests.post('http://localhost:8080/graphql', json={'query': '{ __typename }'})
-        print(resp.json())
-        PYEOF
-
     - name: Test Python implementation manually
-      run: python3 /tmp/python_test.py
+      run: python3 scripts/test_query.py http://localhost:8080/graphql
 
   lint:
     name: Lint
