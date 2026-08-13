@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  demo-server:
+    build:
+      context: ./testserver
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      demo-server:
+        condition: service_healthy
+    environment:
+      - TEST_GRAPHQL_URL=http://demo-server:8080/graphql
+    command: ["go", "test", "-v", "./..."]
+
+  python-test:
+    image: python:3.11-slim
+    depends_on:
+      demo-server:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - TEST_GRAPHQL_URL=http://demo-server:8080/graphql
+    command: >
+      bash -c "
+        pip install requests &&
+        python3 -c \"import requests; r = requests.post('${TEST_GRAPHQL_URL}', json={'query': '{ __typename }'}); print('Python test:', r.json())\"
+      "
