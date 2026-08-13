@@ -47,7 +47,6 @@ jobs:
         go build -o testserver main.go
         ./testserver &
         sleep 2
-        # Verify server is running
         curl -f http://localhost:8080/health || exit 1
 
     - name: Download dependencies
@@ -140,20 +139,22 @@ jobs:
       env:
         TEST_GRAPHQL_URL: http://localhost:8080/graphql
 
-    - name: Run manual Python vs Go comparison
+    - name: Test Go implementation manually
       run: |
-        echo "=== Testing Go Implementation ==="
         curl -s -X POST http://localhost:8080/graphql \
           -H "Content-Type: application/json" \
-          -d '{"query": "{ __typename }"}' | jq .
-        
-        echo ""
-        echo "=== Testing Python Implementation ==="
-        python3 -c "
-import requests
-resp = requests.post('http://localhost:8080/graphql', json={'query': '{ __typename }'})
-print(resp.json())
-"
+          -d '{"query": "{ __typename }"}'
+
+    - name: Create Python test script
+      run: |
+        cat > /tmp/python_test.py << 'PYEOF'
+        import requests
+        resp = requests.post('http://localhost:8080/graphql', json={'query': '{ __typename }'})
+        print(resp.json())
+        PYEOF
+
+    - name: Test Python implementation manually
+      run: python3 /tmp/python_test.py
 
   lint:
     name: Lint
